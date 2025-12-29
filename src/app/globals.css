@@ -1,0 +1,310 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.35s ease-out;
+}
+
+/* ===== GLASS NAV ===== */
+.glass-nav {
+  background: rgba(5, 11, 26, 0.75);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(0, 170, 255, 0.15);
+}
+
+/* ===== NAV BUTTONS ===== */
+.nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  opacity: 0.45;
+  transition: all 0.25s ease;
+}
+
+.nav-btn span {
+  font-size: 10px;
+}
+
+.nav-btn.active {
+  opacity: 1;
+  color: #38bdf8;
+  transform: translateY(-3px);
+}
+
+.nav-btn:active {
+  transform: scale(0.92);
+}
+
+/* ===== MOBILE SAFE ===== */
+@media (min-width: 768px) {
+  .glass-nav {
+    left: 25%;
+    right: 25%;
+    border-radius: 16px;
+    margin-bottom: 12px;
+  }
+}
+@media (max-width: 767px) {
+  .glass-nav {
+    left: 0;
+    right: 0;
+    border-radius: 0;
+    margin-bottom: 0;
+  }
+}
+
+/* ===== UPLOAD ZONE ===== */
+.upload-zone {
+  height: 11rem;
+  border-radius: 1.25rem;
+  border: 1px dashed rgba(59,130,246,0.4);
+  background: rgba(11,16,32,0.65);
+  transition: all 0.25s ease;
+}
+
+.upload-zone.dragging {
+  border-color: #38bdf8;
+  background: rgba(56,189,248,0.15);
+  transform: scale(1.02);
+}
+
+.upload-inner {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* ===== PREVIEW ===== */
+.preview-card {
+  position: relative;
+  max-width: 22rem;
+  border-radius: 1rem;
+  overflow: hidden;
+  background: rgba(11,16,32,0.8);
+  border: 1px solid rgba(59,130,246,0.35);
+}
+
+.preview-card img {
+  width: 100%;
+  display: block;
+}
+
+.remove-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.7);
+  font-size: 0.75rem;
+}
+
+/* ===== CTA ===== */
+.cta-btn {
+  padding: 0.65rem;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: linear-gradient(135deg, #2563eb, #4f46e5);
+  transition: all 0.2s ease;
+}
+
+.cta-btn:active {
+  transform: scale(0.95);
+}
+
+.cta-btn.loading {
+  opacity: 0.7;
+}
+
+/* ===== REPLIES ===== */
+.reply-card {
+  text-align: left;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.85rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(59,130,246,0.3);
+  background: rgba(11,16,32,0.6);
+  transition: all 0.2s ease;
+}
+
+.reply-card:hover {
+  border-color: #38bdf8;
+  background: rgba(56,189,248,0.12);
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes scaleIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.25s ease-out;
+}
+
+/* ===== ONBOARDING CARD + BUTTONS ===== */
+.onboard-card {
+  width: 100%;
+  max-width: 26rem;
+  background: rgba(255,255,255,0.02);
+  border-radius: 14px;
+  padding: 1.25rem;
+  box-shadow: 0 8px 30px rgba(2,6,23,0.6);
+  border: 1px solid rgba(255,255,255,0.03);
+}
+
+.onboard-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.onboard-btn {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #06b6d4, #6366f1);
+  color: white;
+  font-weight: 600;
+  border: none;
+}
+
+.onboard-btn[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.vote-btn {
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  min-width: 110px;
+  font-weight: 600;
+}
+.vote-btn.no { background: rgba(255,255,255,0.06); }
+.vote-btn.yes { background: linear-gradient(90deg,#10b981,#06b6d4); color: white; }
+
+/* subtle card-in animation used by onboarding */
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.995); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-cardIn {
+  animation: cardIn 260ms cubic-bezier(.2,.9,.3,1) both;
+}
+
+/* ===== CUSTOM SCROLLBAR (overlay) ===== */
+.hide-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE 10+ */
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
+}
+
+.custom-scroll {
+  position: absolute;
+  top: 0;
+  right: 6px;
+  width: 28px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 40;
+  pointer-events: auto;
+}
+
+.custom-scroll .track {
+  width: 8px;
+  height: 90%;
+  background: rgba(255,255,255,0.04);
+  border-radius: 999px;
+  display: flex;
+  align-items: flex-start;
+  padding: 4px;
+  transition: background 0.12s ease;
+}
+
+.custom-scroll:hover .track {
+  background: rgba(56,189,248,0.08);
+}
+
+.custom-scroll .thumb {
+  width: 100%;
+  height: 48px; /* initial size, updated dynamically */
+  background: linear-gradient(180deg,#6EE7B7,#06B6D4);
+  border-radius: 999px;
+  box-shadow: 0 6px 18px rgba(2,6,23,0.6);
+  transition: transform 0.12s ease, opacity 0.12s ease;
+  cursor: grab;
+  opacity: 0.95;
+}
+
+.custom-scroll .thumb:active {
+  cursor: grabbing;
+  transform: scale(0.98);
+}
+
+/* Make sure the custom-scroll doesn't intercept clicks on small screens where native scrolling is preferred */
+@media (max-width: 640px) {
+  .custom-scroll { right: 4px; width: 22px; display: none; } /* hide custom overlay on small screens to avoid intercepting touch scroll */
+  .custom-scroll .track { width: 6px; }
+}
+
+/* Chat / profile scroll area helpers to make mobile height safer */
+.chat-area { height: calc(100vh - 220px); }
+.profile-scroll { height: calc(100vh - 220px); }
+
+@media (max-width: 640px) {
+  .chat-area { height: calc(100vh - 300px); }
+  .profile-scroll { height: calc(100vh - 300px); }
+}
+
