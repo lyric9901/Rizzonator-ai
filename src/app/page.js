@@ -5,12 +5,15 @@ import Onboarding from "./onboarding";
 import Upload from "./upload";
 import Bot from "./bot";
 import Profile from "./profile";
+import { Analytics } from "@vercel/analytics/next"
 
 export default function Home() {
   const [ready, setReady] = useState(false);
   const [tab, setTab] = useState("upload");
   const [gender, setGender] = useState("Profile");
 
+
+  
   useEffect(() => {
     const done = localStorage.getItem("onboarded") === "true";
     setReady(done);

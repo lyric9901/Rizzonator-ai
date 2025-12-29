@@ -18,6 +18,8 @@ const RIZZ_LINES = [
   { text: "Angels should be in heaven. How’d you escape?", type: "witty" },
 ];
 
+import { generateUniqueUID } from "../lib/uid";
+
 export default function Onboarding({ onComplete }) {
   const [step, setStep] = useState(1);
   const [rizzIndex, setRizzIndex] = useState(0);
@@ -83,9 +85,12 @@ export default function Onboarding({ onComplete }) {
       scores[a] > scores[b] ? a : b
     );
 
+    // assign a unique 6-digit UID and save it on the profile
+    const uid = generateUniqueUID();
+
     localStorage.setItem(
       "rizzonator_profile",
-      JSON.stringify({ ...profile, preferredRizz: dominant })
+      JSON.stringify({ ...profile, preferredRizz: dominant, uid })
     );
     localStorage.setItem("onboarded", "true");
     localStorage.removeItem("rizzonator_profile_temp");
@@ -100,7 +105,7 @@ export default function Onboarding({ onComplete }) {
         <div className="h-1 bg-white/10 rounded overflow-hidden">
           <div
             className="h-1 bg-blue-500 transition-all duration-300"
-            style={{ width: `${(step / 7) * 100}%` }}
+            style={{ width: `${(step / 8) * 100}%` }}
           />
         </div>
         <p className="text-xs opacity-60 mt-2 text-center">
@@ -127,14 +132,16 @@ function renderStep(step, saveAndNext, voteRizz, rizzIndex, nameInput, setNameIn
   if (step === 1)
     return (
       <>
-        <h2 className="onboard-title">What's your name?</h2>
-        <input
-          value={nameInput}
-          onChange={(e) => setNameInput(e.target.value)}
-          placeholder="Enter your name"
-          className="w-full mt-4 bg-black/6 rounded-2xl px-4 py-3 outline-none"
-        />
-        <div className="mt-4">
+          <div className="onboard-body">
+          <h2 className="onboard-title">What's your name?</h2>
+          <input
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+            placeholder="Enter your name"
+            className="w-full mt-4 bg-black/6 rounded-2xl px-4 py-3 outline-none"
+          />
+        </div>
+        <div className="onboard-actions">
           <button
             onClick={() => saveAndNext("name", nameInput)}
             className={btn}
@@ -180,11 +187,13 @@ function renderStep(step, saveAndNext, voteRizz, rizzIndex, nameInput, setNameIn
 
   return (
     <>
-      <h2 className="text-lg font-semibold mb-3">Is this your rizz?</h2>
-      <p className="mb-6 text-sm opacity-80 min-h-[64px] text-center">
-        {RIZZ_LINES[rizzIndex].text}
-      </p>
-      <div className="flex gap-3">
+      <div className="onboard-body">
+        <h2 className="text-lg font-semibold mb-3">Is this your rizz?</h2>
+        <p className="mb-6 text-sm opacity-80 min-h-[64px] text-center">
+          {RIZZ_LINES[rizzIndex].text}
+        </p>
+      </div>
+      <div className="onboard-actions vote-group">
         <button onClick={() => voteRizz(false)} className="vote-btn no">❌ No</button>
         <button onClick={() => voteRizz(true)} className="vote-btn yes">✅ Yes</button>
       </div>
@@ -194,24 +203,33 @@ function renderStep(step, saveAndNext, voteRizz, rizzIndex, nameInput, setNameIn
 
 const gender = (title, save, btn, key) => (
   <>
-    <h2 className="onboard-title">{title}</h2>
-    {["Male", "Female"].map(v => (
-      <button key={v} onClick={() => save(key, v)} className={btn}>{v}</button>
-    ))}
+    <div className="onboard-body">
+      <h2 className="onboard-title">{title}</h2>
+    </div>
+    <div className="onboard-actions">
+      {["Male", "Female"].map(v => (
+        <button key={v} onClick={() => save(key, v)} className={btn}>{v}</button>
+      ))}
+    </div>
   </>
 );
 
+
 const list = (title, items, save, key, btn, lower) => (
   <>
-    <h2 className="onboard-title">{title}</h2>
-    {items.map(v => (
-      <button
-        key={v}
-        onClick={() => save(key, lower ? v.toLowerCase() : v)}
-        className={`${btn} text-left`}
-      >
-        {v}
-      </button>
-    ))}
+    <div className="onboard-body">
+      <h2 className="onboard-title">{title}</h2>
+    </div>
+    <div className="onboard-actions">
+      {items.map(v => (
+        <button
+          key={v}
+          onClick={() => save(key, lower ? v.toLowerCase() : v)}
+          className={`${btn} text-left`}
+        >
+          {v}
+        </button>
+      ))}
+    </div>
   </>
 );

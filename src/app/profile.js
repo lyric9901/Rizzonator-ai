@@ -2,18 +2,35 @@
 
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
+import { generateUniqueUID } from "../lib/uid";
 
 export default function Profile() {
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState("/pepe.svg");
+  const [gender, setGender] = useState("");
+  const [uid, setUid] = useState("");
 
   useEffect(() => {
     try {
       const p = JSON.parse(localStorage.getItem("rizzonator_profile") || "{}");
       if (p?.name) {
         setName(p.name);
+        // set or generate UID
+        if (p.uid) {
+          setUid(p.uid);
+        } else {
+          const newUid = generateUniqueUID();
+          setUid(newUid);
+          try {
+            localStorage.setItem("rizzonator_profile", JSON.stringify({ ...p, uid: newUid }));
+          } catch (e) {
+            // ignore
+          }
+        }
+
         // select avatar based on saved gender
         if (p.userGender && typeof p.userGender === "string") {
+          setGender(p.userGender);
           const g = p.userGender.toLowerCase();
           if (g === "female" || g === "woman" || g === "girl") {
             setAvatar("https://i.pinimg.com/736x/86/7b/2d/867b2d486fe4dd120adfb3f576b9b17f.jpg");
@@ -28,6 +45,7 @@ export default function Profile() {
       const tmp = JSON.parse(localStorage.getItem("rizzonator_profile_temp") || "{}");
       if (tmp?.name) setName(tmp.name);
       if (tmp?.userGender && typeof tmp.userGender === "string") {
+        setGender(tmp.userGender);
         const g2 = tmp.userGender.toLowerCase();
         if (g2 === "female" || g2 === "woman" || g2 === "girl") {
           setAvatar("https://i.pinimg.com/736x/86/7b/2d/867b2d486fe4dd120adfb3f576b9b17f.jpg");
@@ -39,6 +57,8 @@ export default function Profile() {
       // ignore
     }
   }, []);
+
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -62,7 +82,7 @@ export default function Profile() {
           <h1 className="text-xl font-semibold">Profile</h1>
           <p className="text-sm opacity-60">Manage your account</p>
         </div>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
           <span className="px-3 py-1 rounded-full bg-white/20 text-sm">Free</span>
         </div>
       </div>
@@ -88,17 +108,18 @@ export default function Profile() {
               <div>
                 <div className="text-sm opacity-60">Name</div>
                 <div className="font-medium">{name || "Your name"}</div>
+                <div className="text-xs opacity-60">UID: {uid || "—"}</div>
               </div>
             </div>
 
             <div className="flex justify-between items-center mb-3">
               <div>
                 <div className="text-sm opacity-60">Gender</div>
-                <div className="font-medium">Male</div>
+                <div className="font-medium">{gender || "Your gender"}</div>
               </div>
               <div className="flex bg-black/40 rounded-full p-1">
-                <button className="px-3 py-1 rounded-full bg-cyan-400 text-black font-medium">♂</button>
-                <button className="px-3 py-1 rounded-full opacity-50">♀</button>
+                <button className={`px-3 py-1 rounded-full ${gender?.toLowerCase() === "male" ? "bg-cyan-400 text-black font-medium" : "opacity-50"}`}>♂</button>
+                <button className={`px-3 py-1 rounded-full ${gender?.toLowerCase() === "female" ? "bg-cyan-400 text-black font-medium" : "opacity-50"}`}>♀</button>
               </div>
             </div>
 
@@ -120,13 +141,13 @@ export default function Profile() {
               <span className="opacity-60">›</span>
             </button>
 
-            <button className="w-full text-left bg-white/6 rounded-2xl px-4 py-3 flex justify-between items-center">
+            <a href="https://forms.gle/dwBB7YY3JTUAezWk7" target="_blank" rel="noopener noreferrer" className="w-full text-left bg-white/6 rounded-2xl px-4 py-3 flex justify-between items-center">
               <div>
                 <div className="font-medium">Feedback</div>
                 <div className="text-xs opacity-60">Help improve Rizzonator</div>
               </div>
               <span className="opacity-60">›</span>
-            </button>
+            </a>
 
             <button className="w-full text-left bg-white/6 rounded-2xl px-4 py-3 flex justify-between items-center">
               <div>
@@ -135,16 +156,12 @@ export default function Profile() {
               </div>
               <span className="opacity-60">›</span>
             </button>
+
+
           </div>
         </div>
 
         <div className="h-24" />
-      </div>
-
-      {/* BOTTOM ACTIONS */}
-      <div className="fixed bottom-20 left-5 right-5 flex gap-3 z-20">
-        <button className="flex-1 bg-white/10 rounded-2xl px-4 py-3">Edit Profile</button>
-        <button className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center">⚙️</button>
       </div>
 
       {/* LOGO */}
