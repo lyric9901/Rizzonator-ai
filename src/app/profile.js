@@ -9,6 +9,7 @@ export default function Profile() {
   const [avatar, setAvatar] = useState("/pepe.svg");
   const [gender, setGender] = useState("");
   const [uid, setUid] = useState("");
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     try {
@@ -128,7 +129,46 @@ export default function Profile() {
                 <div className="text-sm opacity-60">Plan</div>
                 <div className="font-medium">Free</div>
               </div>
-              <button className="text-sm px-3 py-1 rounded-full bg-white/10">Upgrade</button>
+
+             {/* Upgrade button */}
+
+              <button
+                onClick={async () => {
+                  const upi = "blayzix@pnb";
+                  const amount = 49;
+
+                  const upiUrl = `upi://pay?pa=${encodeURIComponent(
+                    upi
+                  )}&pn=Rizzonator&am=${amount}&cu=INR`;
+
+                  try {
+                    const a = document.createElement("a");
+                    a.href = upiUrl;
+                    a.style.display = "none";
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                  } catch (e1) {
+                    console.warn("Anchor click failed, trying fallback", e1);
+                    try {
+                      if (/Android/i.test(navigator.userAgent)) {
+                        const intentUrl = `intent://pay?pa=${encodeURIComponent(
+                          upi
+                        )}&pn=Rizzonator&am=${amount}&cu=INR#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end`;
+                        window.location.href = intentUrl;
+                      } else {
+                        window.location.open(upiUrl, "_self");
+                      }
+                    } catch (e2) {
+                      console.warn("UPI redirect failed", e2);
+                    }
+                  }
+                }}
+                className="text-sm px-3 py-1 rounded-full bg-white/10"
+              >
+                Upgrade
+              </button>
+
             </div>
           </div>
 
