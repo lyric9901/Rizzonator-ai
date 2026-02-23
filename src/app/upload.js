@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Tesseract from "tesseract.js";
 
 export default function Upload() {
@@ -9,8 +9,21 @@ export default function Upload() {
   const [replies, setReplies] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [userProfile, setUserProfile] = useState({});
 
-  /* ---------- FILE HANDLING ---------- */
+  useEffect(() => {
+    try {
+      const p = JSON.parse(localStorage.getItem("rizzonator_profile") || "{}");
+      setUserProfile(p);
+    } catch (e) {}
+  }, []);
+
+  const triggerHaptic = () => {
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      navigator.vibrate(50);
+    }
+  };
+
   const handleFile = (file) => {
     if (!file || !file.type.startsWith("image/")) return;
     setImage(file);
@@ -24,7 +37,6 @@ export default function Upload() {
     setReplies([]);
   };
 
-  /* ---------- DRAG EVENTS ---------- */
   const onDragOver = (e) => {
     e.preventDefault();
     setDragging(true);
@@ -38,8 +50,6 @@ export default function Upload() {
     handleFile(e.dataTransfer.files[0]);
   };
 
-  /* ---------- OCR + AI ---------- */
-  // Resize large images on mobile to avoid memory / timeout issues
   const resizeImageFile = (file, maxDim = 1024) =>
     new Promise((resolve, reject) => {
       const url = URL.createObjectURL(file);
@@ -89,16 +99,14 @@ export default function Upload() {
 
   const analyze = async () => {
     if (!image) return;
+    triggerHaptic();
     setLoading(true);
     setReplies([]);
 
     try {
-      // Resize to reduce memory/timeouts on mobile
       const input = await resizeImageFile(image, 1024);
-
       const { data } = await Tesseract.recognize(input, "eng");
 
-      // attempt to get image width (use preview created earlier)
       const imgSize = await new Promise((res) => {
         const i = new Image();
         i.onload = () => res({ width: i.naturalWidth, height: i.naturalHeight });
@@ -106,7 +114,6 @@ export default function Upload() {
         i.src = preview;
       });
 
-      // use Tesseract lines with bbox when possible, otherwise split text
       const ocrLines = (data.lines && data.lines.length)
         ? data.lines.map((l) => {
             const bbox = l.bbox || l.boundingBox || l.box || (l.words && l.words[0] && l.words[0].bbox) || {};
@@ -119,8 +126,9 @@ export default function Upload() {
             .map((t) => ({ text: t.trim(), side: "unknown" }))
             .filter((l) => l.text);
 
+      // Enhanced Filtering to remove system UI elements in screenshots
       const filtered = ocrLines
-        .filter((l) => l.text && !/double tap|today|yesterday|am|pm|seen|active|message/i.test(l.text))
+        .filter((l) => l.text && !/double tap|today|yesterday|am|pm|seen|active|message|unread|end-to-end|encrypted|blocked/i.test(l.text))
         .slice(-6);
 
       if (!filtered || filtered.length === 0) {
@@ -129,10 +137,12 @@ export default function Upload() {
         return;
       }
 
+      const style = userProfile.preferredRizz || "smooth";
+
       const res = await fetch("/api/rizz", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: filtered, copyMode: true }),
+        body: JSON.stringify({ messages: filtered, copyMode: true, style }),
       });
 
       if (!res.ok) throw new Error("Network response was not ok");
@@ -143,9 +153,7 @@ export default function Upload() {
       if ((out.replies || []).length > 0) {
         try {
           await navigator.clipboard.writeText(out.replies[0]);
-        } catch (err) {
-          // ignore clipboard errors (some mobile browsers restrict clipboard)
-        }
+        } catch (err) {}
       }
     } catch (err) {
       console.error(err);
@@ -155,26 +163,22 @@ export default function Upload() {
     }
   };
 
-  /* ---------- UI ---------- */
   return (
     <div className="mx-auto w-full max-w-2xl px-4 pt-6 pb-28 flex flex-col gap-4" style={{ paddingBottom: "calc(7rem + env(safe-area-inset-bottom))" }}>
-      {/* ↑ pb-28 is the FIX (space for bottom nav) */}
-
-      <h1 className="text-blue-400 font-semibold text-lg">
-        Screenshot Replies
+      <h1 className="text-cyan-400 font-semibold text-lg flex items-center gap-2">
+        <span>📸</span> Screenshot Replies
       </h1>
 
-      {/* UPLOAD / DROP ZONE */}
       {!preview && (
         <div
           onDragOver={onDragOver}
           onDragLeave={onDragLeave}
           onDrop={onDrop}
-          className={`w-full h-44 flex flex-col items-center justify-center rounded-2xl border border-dashed transition
+          className={`w-full h-44 flex flex-col items-center justify-center rounded-2xl border border-dashed transition-all
             ${
               dragging
-                ? "border-blue-500 bg-blue-900/20"
-                : "border-blue-900/40 bg-[#0b1020]/60"
+                ? "border-cyan-500 bg-cyan-900/20 scale-105"
+                : "border-blue-900/40 bg-[#0b1020]/60 hover:border-cyan-500/50"
             }`}
         >
           <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer">
@@ -184,51 +188,63 @@ export default function Upload() {
               hidden
               onChange={(e) => handleFile(e.target.files[0])}
             />
-            <p className="font-medium">Upload screenshot</p>
-            <p className="text-xs opacity-60 mt-1">
-              Drag & drop or tap
+            <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center mb-3">
+              <span className="text-xl">⬆️</span>
+            </div>
+            <p className="font-medium text-white/90">Upload screenshot</p>
+            <p className="text-xs text-white/50 mt-1">
+              Drag & drop or tap to browse
             </p>
           </label>
         </div>
       )}
 
-      {/* IMAGE PREVIEW */}
       {preview && (
-        <div className="relative w-full max-w-sm rounded-xl overflow-hidden border border-blue-900/40 bg-[#0b1020]/80">
+        <div className="relative w-full max-w-sm mx-auto rounded-xl overflow-hidden border border-blue-900/40 bg-[#0b1020]/80 shadow-2xl">
           <img
             src={preview}
             alt="preview"
-            className="w-full object-cover"
+            className="w-full object-cover max-h-[400px]"
           />
           <button
-            onClick={removeImage}
-            className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/70 text-xs flex items-center justify-center"
+            onClick={() => {
+              triggerHaptic();
+              removeImage();
+            }}
+            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/80 text-white text-xs flex items-center justify-center backdrop-blur-sm border border-white/20 hover:bg-black transition-colors"
           >
             ✕
           </button>
         </div>
       )}
 
-      {/* ACTION BUTTON */}
       {image && (
         <button
           onClick={analyze}
-          className="w-full py-3 sm:py-2.5 rounded-lg text-sm font-medium bg-gradient-to-r from-blue-600 to-indigo-700 active:scale-95 transition"
+          disabled={loading}
+          className="w-full py-3.5 mt-2 rounded-xl text-sm font-semibold bg-cyan-500 text-black active:scale-95 transition-all shadow-lg shadow-cyan-500/20 disabled:opacity-70 disabled:active:scale-100"
         >
-          {loading ? "Analyzing…" : "Get replies"}
+          {loading ? "Analyzing Chat..." : "Get Replies"}
         </button>
       )}
 
-      {/* REPLIES */}
       {replies.length > 0 && (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-3 mt-4">
           {replies.map((r, i) => (
             <button
               key={i}
-              onClick={() => navigator.clipboard.writeText(r)}
-              className="text-left text-sm px-4 py-3 sm:py-2 rounded-lg border border-blue-900/40 bg-[#0b1020]/60 hover:border-blue-500 hover:bg-blue-500/10 transition"
+              onClick={(e) => {
+                triggerHaptic();
+                navigator.clipboard.writeText(r);
+                const btn = e.currentTarget;
+                const originalText = btn.innerHTML;
+                btn.innerHTML = `<span class="text-green-400">✓ Copied!</span>`;
+                setTimeout(() => { btn.innerHTML = originalText; }, 1000);
+              }}
+              className="text-left text-sm px-5 py-4 rounded-xl border border-blue-900/40 bg-[#0b1020]/80 hover:border-cyan-500/50 hover:bg-cyan-500/10 transition-all shadow-lg relative group"
             >
-              {r}
+              <span className="block pr-6">{r}</span>
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-cyan-400 text-xs">Copy</span>
             </button>
           ))}
         </div>
