@@ -1,6 +1,6 @@
 export async function POST(req) {
   try {
-    const { messages, copyMode } = await req.json();
+    const { messages, copyMode, style } = await req.json();
 
     // SAFETY
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -8,6 +8,8 @@ export async function POST(req) {
         replies: ["Hey 👋 How can I help?"],
       });
     }
+
+    const rizzStyle = style || "smooth"; // Fallback to smooth if no style provided
 
     // JOIN USER INPUT (plain text for intent detection)
     const plainTexts = messages
@@ -32,7 +34,10 @@ export async function POST(req) {
       ? `
 You are BeanZ Bot 🤖 — a texting wingman.
 
-IMPORTANT: You will receive conversation lines prefixed with RIGHT or LEFT (e.g., RIGHT: Hey). **RIGHT** indicates messages from the main user (the person using this app). **LEFT** indicates messages from the other person. Use the last message's side to decide whether the latest message is INCOMING (LEFT) or OUTGOING (RIGHT).
+IMPORTANT: You will receive conversation lines prefixed with RIGHT or LEFT (e.g., RIGHT: Hey). **RIGHT** indicates messages from the main user. **LEFT** indicates messages from the other person. Use the last message's side to decide whether the latest message is INCOMING (LEFT) or OUTGOING (RIGHT).
+
+The user's preferred texting style is: **${rizzStyle.toUpperCase()}**.
+Ensure all your generated messages heavily lean into this ${rizzStyle} persona.
 
 The first line of your reply MUST be either **INCOMING** or **OUTGOING** (uppercase). After that, provide EXACTLY 3 DIFFERENT send-ready messages, each on its own line. Do NOT include any extra explanation or lines.
 
@@ -45,7 +50,6 @@ STRICT RULES:
 - Casual Gen Z English.
 - Short, confident, human tone.
 - Use emojis where appropriate.
-- Do not provide a roadmap to copy-paste messages.
 `
       : `
 You are BeanZ Bot 🤖 — a helpful AI wingman.
@@ -59,7 +63,8 @@ OUTPUT FORMAT (STRICT):
 - End with ONE short action line (not a paragraph)
 
 STYLE:
-- Friendly, confident, human , humorous
+- Friendly, confident, human, humorous.
+- The user prefers a ${rizzStyle} approach.
 - Sound like a smart friend, not a blog
 - No over-explaining
 
@@ -69,9 +74,7 @@ CONTENT RULES:
 - Do NOT switch into texting mode
 - Give ONE clear answer only
 - Can give examples if relevant
-- Can give user a roadmap to get a partner like set bio to __, Post stories about __, text first with __, Set profile pic to __ , Set ig story about___ with song ___, set song on notes to ___ etc. and not everything in day 1 tell user like day 2 , day 3 etc.
 - Ask user a question to help user accurately only if needed
-- Tell user exactly what to set in
 `;
 
     // CALL OPENROUTER
@@ -117,7 +120,6 @@ CONTENT RULES:
       if (header.startsWith("INCOMING") || header.startsWith("OUTGOING")) {
         replies = lines.slice(1, 4);
       } else {
-        // Fallback: assume the first 3 non-empty lines are the messages
         replies = lines.slice(0, 3);
       }
     } else {
