@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Tesseract from "tesseract.js";
+import ReactCrop from "react-image-crop";
+import "react-image-crop/dist/ReactCrop.css";
 import { useProfile } from "./providers";
 
 export default function Upload() {
@@ -11,7 +13,12 @@ export default function Upload() {
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState("");
   const [dragging, setDragging] = useState(false);
-  
+
+  // Cropper State
+  const [crop, setCrop] = useState(null);
+  const [completedCrop, setCompletedCrop] = useState(null);
+  const imgRef = useRef(null);
+
   // Use Global Context
   const { userProfile } = useProfile();
 
@@ -28,6 +35,8 @@ export default function Upload() {
     setImage(file);
     setPreview(URL.createObjectURL(file));
     setReplies([]);
+    setCrop(null);
+    setCompletedCrop(null);
   };
 
   const removeImage = () => {
@@ -36,6 +45,8 @@ export default function Upload() {
     setPreview(null);
     setReplies([]);
     setLoadingText("");
+    setCrop(null);
+    setCompletedCrop(null);
   };
 
   /* ---------- DRAG EVENTS ---------- */
@@ -54,11 +65,50 @@ export default function Upload() {
     handleFile(e.dataTransfer.files[0]);
   };
 
+  /* ---------- CROP UTILITY ---------- */
+  const getCroppedImgBlob = (imageElement, cropConfig) => {
+    const canvas = document.createElement("canvas");
+    const scaleX = imageElement.naturalWidth / imageElement.width;
+    const scaleY = imageElement.naturalHeight / imageElement.height;
+    
+    canvas.width = cropConfig.width;
+    canvas.height = cropConfig.height;
+    const ctx = canvas.getContext("2d");
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+
+    ctx.drawImage(
+      imageElement,
+      cropConfig.x * scaleX,
+      cropConfig.y * scaleY,
+      cropConfig.width * scaleX,
+      cropConfig.height * scaleY,
+      0,
+      0,
+      cropConfig.width,
+      cropConfig.height
+    );
+
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(new Error("Canvas is empty"));
+            return;
+          }
+          resolve(blob);
+        },
+        "image/jpeg",
+        1.0
+      );
+    });
+  };
+
   /* ---------- OCR + AI ---------- */
-  // Resize large images on mobile to avoid memory / timeout issues
-  const resizeImageFile = (file, maxDim = 1024) =>
+  const resizeImageFile = (fileOrBlob, maxDim = 1024) =>
     new Promise((resolve, reject) => {
-      const url = URL.createObjectURL(file);
+      const url = URL.createObjectURL(fileOrBlob);
       const img = new Image();
       
       img.onload = () => {
@@ -87,11 +137,8 @@ export default function Upload() {
           canvas.toBlob(
             (blob) => {
               URL.revokeObjectURL(url);
-              if (blob) {
-                resolve(blob);
-              } else {
-                reject(new Error("Failed to create blob from canvas"));
-              }
+              if (blob) resolve(blob);
+              else reject(new Error("Failed to create blob from canvas"));
             },
             "image/jpeg",
             0.8
@@ -102,7 +149,7 @@ export default function Upload() {
         }
       };
       
-      img.onerror = (e) => {
+      img.onerror = () => {
         URL.revokeObjectURL(url);
         reject(new Error("Image load error"));
       };
@@ -119,42 +166,50 @@ export default function Upload() {
     setLoadingText("Extracting text data...");
 
     try {
-      // 1. Resize Image
-      const input = await resizeImageFile(image, 1024);
+      // 1. Determine Image Source (Cropped vs Original)
+      let sourceBlob = image;
+      if (completedCrop && completedCrop.width > 0 && completedCrop.height > 0 && imgRef.current) {
+        setLoadingText("Processing cropped area...");
+        sourceBlob = await getCroppedImgBlob(imgRef.current, completedCrop);
+      }
 
-      // 2. Run Tesseract OCR
+      // 2. Resize Image
+      const input = await resizeImageFile(sourceBlob, 1024);
+
+      // 3. Run Tesseract OCR
+      // NOTE: For future server-side OCR upgrade, you would convert `input` to Base64 
+      // here and send it to your /api/rizz route instead of running Tesseract locally.
       const { data } = await Tesseract.recognize(input, "eng");
       
       setLoadingText("Filtering noise...");
       
-      // 3. Calculate Image Width for L/R Detection
+      // 4. Calculate Final Image Width for L/R Detection based on what was actually scanned
+      const inputUrl = URL.createObjectURL(input);
       const imgSize = await new Promise((res) => {
         const i = new Image();
         i.onload = () => res({ width: i.naturalWidth, height: i.naturalHeight });
         i.onerror = () => res({ width: 0, height: 0 });
-        i.src = preview;
+        i.src = inputUrl;
       });
+      URL.revokeObjectURL(inputUrl);
 
-      // 4. Advanced OCR Parsing (Filters out confidence < 40%)
+      // 5. Advanced OCR Parsing
       const ocrLines = (data.lines && data.lines.length)
         ? data.lines
-            .filter((l) => l.confidence > 40) // Reject blurry garbage text
+            .filter((l) => l.confidence > 40) // Reject blurry garbage
             .map((l) => {
               const bbox = l.bbox || l.boundingBox || l.box || (l.words && l.words[0] && l.words[0].bbox) || {};
               const centerX = bbox.x0 !== undefined && bbox.x1 !== undefined ? (bbox.x0 + bbox.x1) / 2 : undefined;
               const side = centerX !== undefined && imgSize.width ? (centerX > imgSize.width / 2 ? "right" : "left") : "unknown";
               
-              return { 
-                text: (l.text || "").trim(), 
-                side 
-              };
+              return { text: (l.text || "").trim(), side };
             })
         : data.text
             .split("\n")
             .map((t) => ({ text: t.trim(), side: "unknown" }))
             .filter((l) => l.text);
 
-      // 5. Contextual System Text Filtering
+      // 6. Contextual System Text Filtering
       const filtered = ocrLines
         .filter((l) => {
           const isSystemText = /double tap|today|yesterday|am|pm|seen|active|message|unread|end-to-end|encrypted|blocked|type a message|reply/i.test(l.text);
@@ -170,14 +225,14 @@ export default function Upload() {
 
       setLoadingText("Generating tactical Rizz...");
 
-      // 6. Call the AI API
+      // 7. Call the AI API
       const res = await fetch("/api/rizz", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           messages: filtered, 
           copyMode: true, 
-          profile: userProfile // Use globally shared profile state
+          profile: userProfile 
         }),
       });
 
@@ -188,7 +243,7 @@ export default function Upload() {
 
     } catch (err) {
       console.error("Analysis Error:", err);
-      setReplies(["Something went wrong. Try a smaller image or crop it."]);
+      setReplies(["Something went wrong. Try a smaller image or crop it closer."]);
     } finally {
       setLoading(false);
     }
@@ -207,7 +262,7 @@ export default function Upload() {
         </div>
         <div>
           <h2 className="text-xl font-bold tracking-tight text-white">Visual Rizz</h2>
-          <p className="text-sm text-cyan-100/50">Upload chat for instant analysis</p>
+          <p className="text-sm text-cyan-100/50">Upload chat & crop for analysis</p>
         </div>
       </div>
 
@@ -224,7 +279,6 @@ export default function Upload() {
           onDragLeave={onDragLeave} 
           onDrop={onDrop}
         >
-          {/* Futuristic Grid Background */}
           <div className="absolute inset-0 opacity-20 bg-[linear-gradient(rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[size:20px_20px]" />
           
           <input 
@@ -245,32 +299,46 @@ export default function Upload() {
         </label>
       )}
 
-      {/* IMAGE PREVIEW WITH LASER SCAN OVERLAY */}
+      {/* IMAGE PREVIEW WITH CROPPER & LASER SCAN */}
       {preview && (
         <div className="flex flex-col gap-4">
-          <div className="relative w-full h-[340px] rounded-[2rem] overflow-hidden border border-white/10 bg-black shadow-2xl">
-            <img 
-              src={preview} 
-              alt="Scan" 
-              className={`w-full h-full object-cover transition-opacity duration-500 ${
-                loading ? "opacity-40 grayscale-[50%]" : "opacity-90"
-              }`} 
-            />
+          <div className="relative w-full rounded-[2rem] overflow-hidden border border-white/10 bg-black shadow-2xl flex items-center justify-center min-h-[340px]">
+            
+            {/* Cropper wrapped around Image */}
+            <div className={`w-full flex justify-center transition-opacity duration-500 ${loading ? "opacity-40 grayscale-[50%] pointer-events-none" : "opacity-100"}`}>
+              <ReactCrop 
+                crop={crop} 
+                onChange={(c) => setCrop(c)} 
+                onComplete={(c) => setCompletedCrop(c)}
+                className="max-h-[500px]"
+              >
+                <img 
+                  ref={imgRef}
+                  src={preview} 
+                  alt="Scan" 
+                  className="max-h-[500px] w-auto object-contain" 
+                />
+              </ReactCrop>
+            </div>
+
+            {/* Instruction Banner when not loading */}
+            {!loading && !crop?.width && (
+              <div className="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none">
+                <span className="bg-black/80 backdrop-blur-md px-4 py-2 rounded-full text-xs font-semibold text-cyan-400 border border-cyan-500/30 animate-pulse">
+                  Drag to crop chat bubbles
+                </span>
+              </div>
+            )}
             
             {/* Animated Laser Scanner Elements */}
             {loading && (
               <>
-                {/* Horizontal Laser Line */}
                 <div className="absolute top-0 left-0 w-full h-1 bg-cyan-400 shadow-[0_0_20px_4px_rgba(34,211,238,0.7)] z-20 animate-[scan_2.5s_ease-in-out_infinite]" />
-                
-                {/* Vertical Gradient Glow */}
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-500/10 to-transparent z-10 animate-[scanGlow_2.5s_ease-in-out_infinite]" />
-                
-                {/* Loading Status Indicator */}
-                <div className="absolute inset-0 flex items-center justify-center flex-col z-30">
-                  <div className="bg-black/60 backdrop-blur-xl px-6 py-4 rounded-2xl border border-white/10 flex flex-col items-center">
+                <div className="absolute inset-0 flex items-center justify-center flex-col z-30 pointer-events-none">
+                  <div className="bg-black/80 backdrop-blur-xl px-6 py-4 rounded-2xl border border-white/10 flex flex-col items-center">
                     <div className="w-8 h-8 border-4 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin mb-3"></div>
-                    <p className="text-sm font-bold animate-pulse text-cyan-400 tracking-wider uppercase">
+                    <p className="text-sm font-bold animate-pulse text-cyan-400 tracking-wider uppercase text-center max-w-[200px]">
                       {loadingText}
                     </p>
                   </div>
@@ -279,14 +347,16 @@ export default function Upload() {
             )}
 
             {/* Remove Image Button */}
-            <button 
-              onClick={removeImage} 
-              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/60 text-white flex items-center justify-center backdrop-blur-md border border-white/20 hover:bg-black hover:scale-105 transition-all z-40 shadow-lg"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            {!loading && (
+              <button 
+                onClick={removeImage} 
+                className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/60 text-white flex items-center justify-center backdrop-blur-md border border-white/20 hover:bg-black hover:scale-105 transition-all z-40 shadow-lg"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
           </div>
 
           {/* GENERATE BUTTON */}
@@ -319,7 +389,6 @@ export default function Upload() {
                 triggerHaptic();
                 navigator.clipboard.writeText(r);
                 
-                // Visual feedback for copying
                 const btn = e.currentTarget;
                 const originalText = btn.innerHTML;
                 btn.innerHTML = `
@@ -340,7 +409,6 @@ export default function Upload() {
                 {r}
               </span>
               
-              {/* Floating Copy Icon */}
               <div className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/10 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-all group-hover:bg-cyan-500/20">
                  <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
