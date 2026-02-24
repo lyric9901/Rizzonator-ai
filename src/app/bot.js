@@ -4,6 +4,31 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 
+// Advanced Inline Copy Component (Hides quotes, makes text clickable)
+const InlineCopyBubble = ({ text }) => {
+  const [copied, setCopied] = useState(false);
+  return (
+    <span
+      onClick={(e) => {
+        e.stopPropagation();
+        if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(50);
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }}
+      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 rounded-lg bg-cyan-500/15 text-cyan-300 font-bold hover:bg-cyan-500/25 transition-all active:scale-95 border border-cyan-500/30 cursor-pointer shadow-sm group align-middle"
+      title="Tap to copy"
+    >
+      {text}
+      {copied ? (
+        <svg className="w-3.5 h-3.5 text-green-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+      ) : (
+        <svg className="w-3.5 h-3.5 opacity-50 group-hover:opacity-100 transition-opacity shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+      )}
+    </span>
+  );
+};
+
 const SUGGESTIONS = [
   { 
     text: "How to start a convo?", 
@@ -60,7 +85,6 @@ export default function Bot() {
 
     const { scrollHeight, clientHeight, scrollTop } = el;
 
-    // hide thumb when no scroll needed
     if (scrollHeight <= clientHeight) {
       thumb.style.opacity = "0";
       return;
@@ -108,12 +132,8 @@ export default function Bot() {
     document.removeEventListener("mouseup", stopDrag);
   };
 
-  /* ===============================
-     SCROLL ONLY CHAT (NOT WINDOW)
-  =============================== */
   useEffect(() => {
     if (!chatRef.current) return;
-
     if (chat.length === 0) {
       chatRef.current.scrollTop = 0;
     } else {
@@ -121,7 +141,6 @@ export default function Bot() {
     }
   }, [chat]);
 
-  // keep the custom thumb size/position up-to-date
   useEffect(() => {
     updateThumb();
     const el = chatRef.current;
@@ -139,9 +158,6 @@ export default function Bot() {
     };
   }, [chat]);
 
-  /* ===============================
-     SEND MESSAGE
-  =============================== */
   const sendMessage = async (text) => {
     if (!text.trim()) return;
 
@@ -159,12 +175,10 @@ export default function Bot() {
     const out = await res.json();
 
     if (copyMode && out.replies && out.replies.length > 0) {
-      // copy-mode: show each message as copy-ready buttons
       out.replies.forEach((r) => {
         setChat((c) => [...c, { role: "bot-copy", text: r }]);
       });
     } else {
-      // AI-mode: show a single assistant message
       const text = Array.isArray(out.replies) ? out.replies.join("\n\n") : out.replies?.[0] || "";
       setChat((c) => [...c, { role: "bot", text }]);
     }
@@ -284,6 +298,10 @@ export default function Bot() {
               );
             }
 
+            // ADVANCED PARSING: Detects "quotes" and turns them into markdown inline `code`, 
+            // which ReactMarkdown will render as our Interactive Copy Bubble.
+            const textWithInlineCode = c.text.replace(/["“”]([^"“”]+)["“”]/g, '`$1`');
+
             return (
               <motion.div
                 key={i}
@@ -292,7 +310,19 @@ export default function Bot() {
                 className="flex justify-start"
               >
                 <div className="bg-white/10 border border-white/5 rounded-2xl rounded-tl-sm px-4 py-3 text-sm max-w-[85%] backdrop-blur-md leading-relaxed prose prose-invert prose-sm">
-                  <ReactMarkdown>{c.text}</ReactMarkdown>
+                  <ReactMarkdown
+                    components={{
+                      code({ node, inline, className, children, ...props }) {
+                        if (inline) {
+                          // Renders text inside quotes as a clickable, glowing copy button
+                          return <InlineCopyBubble text={String(children)} />;
+                        }
+                        return <code className={className} {...props}>{children}</code>;
+                      }
+                    }}
+                  >
+                    {textWithInlineCode}
+                  </ReactMarkdown>
                 </div>
               </motion.div>
             );
