@@ -11,6 +11,7 @@ const InlineCopyBubble = ({ text }) => {
     <span
       onClick={(e) => {
         e.stopPropagation();
+        e.preventDefault();
         if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(50);
         navigator.clipboard.writeText(text);
         setCopied(true);
@@ -164,12 +165,12 @@ export default function Bot() {
     setChat((c) => [...c, { role: "user", text }]);
 
     const history = [...chat.map((c) => c.text), text];
-    const style = userProfile.preferredRizz || "smooth";
 
     const res = await fetch("/api/rizz", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: history, copyMode, style }),
+      // Passing the full user profile to power the AI's persona
+      body: JSON.stringify({ messages: history, copyMode, profile: userProfile }),
     });
 
     const out = await res.json();
@@ -298,8 +299,7 @@ export default function Bot() {
               );
             }
 
-            // ADVANCED PARSING: Detects "quotes" and turns them into markdown inline `code`, 
-            // which ReactMarkdown will render as our Interactive Copy Bubble.
+            // MAGIC COPY PARSING: Detects text in quotes and transforms it into our glowing copy bubble
             const textWithInlineCode = c.text.replace(/["“”]([^"“”]+)["“”]/g, '`$1`');
 
             return (
@@ -314,7 +314,6 @@ export default function Bot() {
                     components={{
                       code({ node, inline, className, children, ...props }) {
                         if (inline) {
-                          // Renders text inside quotes as a clickable, glowing copy button
                           return <InlineCopyBubble text={String(children)} />;
                         }
                         return <code className={className} {...props}>{children}</code>;
