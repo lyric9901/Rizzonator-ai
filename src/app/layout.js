@@ -1,5 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { AppProviders } from "./providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,7 +19,7 @@ export const metadata = {
   manifest: "/manifest.json",
 };
 
-/* ✅ VIEWPORT SETTINGS (ONLY THIS GOES HERE) */
+/* ✅ VIEWPORT SETTINGS */
 export const viewport = {
   themeColor: "#2563eb",
 };
@@ -27,7 +28,10 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        {children}
+        {/* Wrap app in Providers for global state management */}
+        <AppProviders>
+          {children}
+        </AppProviders>
       </body>
     </html>
   );

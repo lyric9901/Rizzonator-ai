@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { generateUniqueUID } from "../lib/uid";
+import { useProfile } from "./providers";
 
 export default function Profile() {
   const [name, setName] = useState("");
@@ -11,54 +12,36 @@ export default function Profile() {
   const [uid, setUid] = useState("");
   const [copied, setCopied] = useState(false);
 
+  // Use Global Context instead of raw localStorage parsing
+  const { userProfile, updateProfile } = useProfile();
+
   useEffect(() => {
-    try {
-      const p = JSON.parse(localStorage.getItem("rizzonator_profile") || "{}");
-      if (p?.name) {
-        setName(p.name);
-        // set or generate UID
-        if (p.uid) {
-          setUid(p.uid);
-        } else {
-          const newUid = generateUniqueUID();
-          setUid(newUid);
-          try {
-            localStorage.setItem("rizzonator_profile", JSON.stringify({ ...p, uid: newUid }));
-          } catch (e) {
-            // ignore
-          }
-        }
-
-        // select avatar based on saved gender
-        if (p.userGender && typeof p.userGender === "string") {
-          setGender(p.userGender);
-          const g = p.userGender.toLowerCase();
-          if (g === "female" || g === "woman" || g === "girl") {
-            setAvatar("https://i.pinimg.com/736x/86/7b/2d/867b2d486fe4dd120adfb3f576b9b17f.jpg");
-          } else if (g === "male" || g === "man" || g === "boy") {
-            setAvatar("https://i.pinimg.com/1200x/0a/ae/7c/0aae7c7ef29a21e83e464efd5370c36a.jpg");
-          } else {
-            setAvatar("/pepe.svg");
-          }
-        }
-        return;
+    if (userProfile && userProfile.name) {
+      setName(userProfile.name);
+      
+      // set or generate UID
+      if (userProfile.uid) {
+        setUid(userProfile.uid);
+      } else {
+        const newUid = generateUniqueUID();
+        setUid(newUid);
+        updateProfile({ ...userProfile, uid: newUid });
       }
-      const tmp = JSON.parse(localStorage.getItem("rizzonator_profile_temp") || "{}");
-      if (tmp?.name) setName(tmp.name);
-      if (tmp?.userGender && typeof tmp.userGender === "string") {
-        setGender(tmp.userGender);
-        const g2 = tmp.userGender.toLowerCase();
-        if (g2 === "female" || g2 === "woman" || g2 === "girl") {
+
+      // select avatar based on saved gender
+      if (userProfile.userGender && typeof userProfile.userGender === "string") {
+        setGender(userProfile.userGender);
+        const g = userProfile.userGender.toLowerCase();
+        if (g === "female" || g === "woman" || g === "girl") {
           setAvatar("https://i.pinimg.com/736x/86/7b/2d/867b2d486fe4dd120adfb3f576b9b17f.jpg");
-        } else if (g2 === "male" || g2 === "man" || g2 === "boy") {
+        } else if (g === "male" || g === "man" || g === "boy") {
           setAvatar("https://i.pinimg.com/1200x/0a/ae/7c/0aae7c7ef29a21e83e464efd5370c36a.jpg");
+        } else {
+          setAvatar("/pepe.svg");
         }
       }
-    } catch (e) {
-      // ignore
     }
-  }, []);
-
+  }, [userProfile, updateProfile]);
 
   return (
     <motion.div
@@ -211,4 +194,3 @@ export default function Profile() {
     </motion.div>
   );
 }
-

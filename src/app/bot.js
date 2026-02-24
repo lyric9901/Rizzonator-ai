@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
+import { useProfile } from "./providers";
 
 // Advanced Inline Copy Component (Hides quotes, makes text clickable)
 const InlineCopyBubble = ({ text }) => {
@@ -52,9 +53,12 @@ const SUGGESTIONS = [
 export default function Bot() {
   const [msg, setMsg] = useState("");
   const [chat, setChat] = useState([]);
+  const [chatLoaded, setChatLoaded] = useState(false);
   const [copied, setCopied] = useState(null);
   const [copyMode, setCopyMode] = useState(false);
-  const [userProfile, setUserProfile] = useState({});
+  
+  // Replace local state with Global Context
+  const { userProfile } = useProfile();
 
   const chatRef = useRef(null);
   const bottomRef = useRef(null);
@@ -72,12 +76,23 @@ export default function Bot() {
     }
   };
 
+  // 1. Load chat history on mount to persist across tab switches
   useEffect(() => {
     try {
-      const p = JSON.parse(localStorage.getItem("rizzonator_profile") || "{}");
-      setUserProfile(p);
-    } catch (e) {}
+      const savedChat = localStorage.getItem("rizzonator_chat_history");
+      if (savedChat) setChat(JSON.parse(savedChat));
+    } catch (e) {
+      console.warn("Failed to load chat history", e);
+    }
+    setChatLoaded(true);
   }, []);
+
+  // 2. Save chat history whenever it updates
+  useEffect(() => {
+    if (chatLoaded) {
+      localStorage.setItem("rizzonator_chat_history", JSON.stringify(chat));
+    }
+  }, [chat, chatLoaded]);
 
   const updateThumb = () => {
     const el = chatRef.current;
@@ -231,13 +246,13 @@ export default function Bot() {
         ref={chatRef}
         className="relative overflow-y-auto space-y-4 pr-3 hide-scrollbar chat-area pb-40 h-[calc(100vh-180px)]"
       >
-        {chat.length === 0 && (
+        {chat.length === 0 && chatLoaded && (
           <div className="mt-6">
             <div className="w-20 h-20 mx-auto bg-gradient-to-b from-white/10 to-transparent rounded-full flex items-center justify-center mb-4 border border-white/5">
               <span className="text-3xl">👋</span>
             </div>
             <p className="text-center text-white/60 text-sm max-w-[80%] mx-auto mb-8">
-              Hey {userProfile.name || "there"}, I'm BeanZ. Ask for advice or tell me what to text.
+              Hey {userProfile?.name || "there"}, I'm BeanZ. Ask for advice or tell me what to text.
             </p>
             <div className="grid grid-cols-2 gap-3">
               {SUGGESTIONS.map((s, i) => (

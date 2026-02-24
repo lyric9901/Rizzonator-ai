@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Tesseract from "tesseract.js";
+import { useProfile } from "./providers";
 
 export default function Upload() {
   const [image, setImage] = useState(null);
@@ -10,19 +11,11 @@ export default function Upload() {
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState("");
   const [dragging, setDragging] = useState(false);
-  const [userProfile, setUserProfile] = useState({});
+  
+  // Use Global Context
+  const { userProfile } = useProfile();
 
-  // 1. Fetch User Profile on Mount
-  useEffect(() => {
-    try {
-      const p = JSON.parse(localStorage.getItem("rizzonator_profile") || "{}");
-      setUserProfile(p);
-    } catch (e) {
-      console.warn("Could not load user profile", e);
-    }
-  }, []);
-
-  // 2. Haptic Feedback Utility for Mobile
+  // Haptic Feedback Utility for Mobile
   const triggerHaptic = () => {
     if (typeof navigator !== "undefined" && navigator.vibrate) {
       navigator.vibrate(50);
@@ -184,7 +177,7 @@ export default function Upload() {
         body: JSON.stringify({ 
           messages: filtered, 
           copyMode: true, 
-          profile: userProfile 
+          profile: userProfile // Use globally shared profile state
         }),
       });
 
