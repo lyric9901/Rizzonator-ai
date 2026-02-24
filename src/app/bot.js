@@ -5,10 +5,22 @@ import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 
 const SUGGESTIONS = [
-  { text: "How to start a conversation?", icon: "🧠" },
-  { text: "What should I text her?", icon: "💬" },
-  { text: "Should I follow her on IG?", icon: "📱" },
-  { text: "How to improve my Instagram?", icon: "✨" },
+  { 
+    text: "How to start a convo?", 
+    icon: <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" />
+  },
+  { 
+    text: "What should I text?", 
+    icon: <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+  },
+  { 
+    text: "Should I follow on IG?", 
+    icon: <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
+  },
+  { 
+    text: "Fix my Instagram bio", 
+    icon: <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+  },
 ];
 
 export default function Bot() {
@@ -21,12 +33,13 @@ export default function Bot() {
   const chatRef = useRef(null);
   const bottomRef = useRef(null);
 
+  // custom scrollbar refs & state
   const thumbRef = useRef(null);
   const dragging = useRef(false);
   const dragStartY = useRef(0);
   const dragStartScroll = useRef(0);
 
-  // Trigger haptic feedback on mobile
+  // Haptic feedback for mobile
   const triggerHaptic = () => {
     if (typeof navigator !== "undefined" && navigator.vibrate) {
       navigator.vibrate(50);
@@ -47,6 +60,7 @@ export default function Bot() {
 
     const { scrollHeight, clientHeight, scrollTop } = el;
 
+    // hide thumb when no scroll needed
     if (scrollHeight <= clientHeight) {
       thumb.style.opacity = "0";
       return;
@@ -94,6 +108,9 @@ export default function Bot() {
     document.removeEventListener("mouseup", stopDrag);
   };
 
+  /* ===============================
+     SCROLL ONLY CHAT (NOT WINDOW)
+  =============================== */
   useEffect(() => {
     if (!chatRef.current) return;
 
@@ -104,6 +121,7 @@ export default function Bot() {
     }
   }, [chat]);
 
+  // keep the custom thumb size/position up-to-date
   useEffect(() => {
     updateThumb();
     const el = chatRef.current;
@@ -121,6 +139,9 @@ export default function Bot() {
     };
   }, [chat]);
 
+  /* ===============================
+     SEND MESSAGE
+  =============================== */
   const sendMessage = async (text) => {
     if (!text.trim()) return;
 
@@ -138,10 +159,12 @@ export default function Bot() {
     const out = await res.json();
 
     if (copyMode && out.replies && out.replies.length > 0) {
+      // copy-mode: show each message as copy-ready buttons
       out.replies.forEach((r) => {
         setChat((c) => [...c, { role: "bot-copy", text: r }]);
       });
     } else {
+      // AI-mode: show a single assistant message
       const text = Array.isArray(out.replies) ? out.replies.join("\n\n") : out.replies?.[0] || "";
       setChat((c) => [...c, { role: "bot", text }]);
     }
@@ -159,15 +182,18 @@ export default function Bot() {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
-      className="fixed inset-0 bg-gradient-to-br from-[#0b0d1a] via-[#14163a] to-black text-white px-5 pt-8"
+      className="fixed inset-0 bg-[#050505] text-white px-5 pt-8 z-10"
     >
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-cyan-400 to-purple-500 flex items-center justify-center">
-          🤖
+      {/* HEADER */}
+      <div className="flex items-center gap-3 mb-6 shrink-0 relative z-20">
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+          </svg>
         </div>
         <div>
-          <h2 className="text-xl font-semibold">BeanZ Bot</h2>
-          <p className="text-sm opacity-60">AI Wingman</p>
+          <h2 className="text-xl font-bold tracking-tight">BeanZ Bot</h2>
+          <p className="text-sm text-white/50">Your AI Wingman</p>
         </div>
 
         <div className="ml-auto">
@@ -176,22 +202,42 @@ export default function Bot() {
               triggerHaptic();
               setCopyMode((v) => !v);
             }}
-            className={`px-3 py-1 rounded-full text-sm transition-colors ${copyMode ? "bg-cyan-400 text-black shadow-lg shadow-cyan-500/30" : "bg-white/10"}`}
+            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+              copyMode ? "bg-cyan-400 text-black shadow-[0_0_15px_rgba(34,211,238,0.5)]" : "bg-white/10 text-white/70"
+            }`}
           >
             {copyMode ? "Copy Mode" : "AI Mode"}
           </button>
         </div>
       </div>
 
+      {/* CHAT (ONLY THIS SCROLLS) */}
       <div
         ref={chatRef}
-        className="relative overflow-y-auto space-y-4 pr-1 hide-scrollbar chat-area pb-36"
+        className="relative overflow-y-auto space-y-4 pr-3 hide-scrollbar chat-area pb-40 h-[calc(100vh-180px)]"
       >
         {chat.length === 0 && (
-          <div className="bg-white/10 border border-white/5 rounded-2xl px-5 py-4 text-sm max-w-[90%] mx-auto mt-4 text-center">
-            <span className="text-xl mb-2 block">👋</span>
-            Hey {userProfile.name || "there"}, I’m BeanZ Bot.<br/>
-            Ask for advice or tell me what to text.
+          <div className="mt-6">
+            <div className="w-20 h-20 mx-auto bg-gradient-to-b from-white/10 to-transparent rounded-full flex items-center justify-center mb-4 border border-white/5">
+              <span className="text-3xl">👋</span>
+            </div>
+            <p className="text-center text-white/60 text-sm max-w-[80%] mx-auto mb-8">
+              Hey {userProfile.name || "there"}, I'm BeanZ. Ask for advice or tell me what to text.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {SUGGESTIONS.map((s, i) => (
+                <button
+                  key={i}
+                  onClick={() => { triggerHaptic(); sendMessage(s.text); }}
+                  className="bg-white/5 border border-white/10 hover:bg-white/10 transition-colors rounded-2xl p-4 text-sm text-left flex flex-col gap-3 backdrop-blur-sm group"
+                >
+                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-cyan-500/20 group-hover:text-cyan-400 transition-colors">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">{s.icon}</svg>
+                  </div>
+                  <span className="font-medium text-white/90">{s.text}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -201,43 +247,53 @@ export default function Bot() {
               return (
                 <motion.div
                   key={i}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="ml-auto bg-cyan-500/30 border border-cyan-400/20 rounded-2xl px-4 py-3 text-sm max-w-[85%]"
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  className="flex justify-end"
                 >
-                  {c.text}
+                  <div className="bg-gradient-to-br from-cyan-500 to-blue-600 text-white rounded-2xl rounded-tr-sm px-4 py-3 text-sm max-w-[80%] shadow-lg shadow-blue-500/20">
+                    {c.text}
+                  </div>
                 </motion.div>
               );
             }
 
             if (c.role === "bot-copy") {
               return (
-                <motion.button
+                <motion.div
                   key={i}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => copyText(c.text, i)}
-                  className="w-full text-left bg-[#0b1020]/70 border border-blue-900/40 hover:border-cyan-500/50 transition-colors rounded-xl px-4 py-3 text-sm"
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  className="flex justify-start w-full"
                 >
-                  <div className="flex justify-between gap-3 items-center">
-                    <span>{c.text}</span>
-                    {copied === i ? (
-                      <span className="text-xs text-green-400 font-medium bg-green-400/10 px-2 py-1 rounded">Copied</span>
-                    ) : (
-                      <span className="text-xs opacity-60">📋</span>
-                    )}
-                  </div>
-                </motion.button>
+                  <button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => copyText(c.text, i)}
+                    className="w-full text-left bg-white/5 border border-white/10 hover:border-cyan-400/50 transition-colors rounded-2xl rounded-tl-sm px-4 py-3 text-sm group relative overflow-hidden backdrop-blur-md"
+                  >
+                    <div className="flex justify-between gap-3 items-start">
+                      <span className="leading-relaxed block pr-6">{c.text}</span>
+                      {copied === i ? (
+                        <span className="text-xs text-green-400 font-medium bg-green-400/10 px-2 py-1 rounded mt-0.5 whitespace-nowrap">Copied</span>
+                      ) : (
+                        <svg className="w-4 h-4 text-white/30 group-hover:text-cyan-400 transition-colors mt-0.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" /></svg>
+                      )}
+                    </div>
+                  </button>
+                </motion.div>
               );
             }
 
             return (
               <motion.div
                 key={i}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white/10 border border-white/5 rounded-2xl px-4 py-3 text-sm max-w-[85%]"
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                className="flex justify-start"
               >
-                <ReactMarkdown>{c.text}</ReactMarkdown>
+                <div className="bg-white/10 border border-white/5 rounded-2xl rounded-tl-sm px-4 py-3 text-sm max-w-[85%] backdrop-blur-md leading-relaxed prose prose-invert prose-sm">
+                  <ReactMarkdown>{c.text}</ReactMarkdown>
+                </div>
               </motion.div>
             );
           })}
@@ -245,8 +301,9 @@ export default function Bot() {
 
         <div ref={bottomRef} />
 
+        {/* custom scrollbar */}
         <div
-          className="custom-scroll"
+          className="custom-scroll absolute right-0 top-0 bottom-0 w-2"
           onClick={(e) => {
             const el = chatRef.current;
             if (!el) return;
@@ -259,10 +316,10 @@ export default function Bot() {
             el.scrollTop = (thumbTop / maxThumbTop) * (scrollHeight - clientHeight);
           }}
         >
-          <div className="track" onClick={(e) => e.stopPropagation()}>
+          <div className="track w-full h-full relative" onClick={(e) => e.stopPropagation()}>
             <div
               ref={thumbRef}
-              className="thumb"
+              className="thumb absolute right-0 w-1.5 bg-white/20 rounded-full hover:bg-white/40 transition-colors cursor-pointer"
               onMouseDown={(e) => {
                 e.preventDefault();
                 startDrag(e);
@@ -272,53 +329,29 @@ export default function Bot() {
         </div>
       </div>
 
-      {chat.length === 0 && (
-        <div className="grid grid-cols-2 gap-3 fixed bottom-36 left-5 right-5 z-10">
-          {SUGGESTIONS.map((s, i) => (
-            <motion.button
-              key={i}
-              whileTap={{ scale: 0.94 }}
-              onClick={() => {
-                triggerHaptic();
-                sendMessage(s.text);
-              }}
-              className="bg-white/10 border border-white/5 hover:bg-white/15 transition-colors rounded-2xl px-3 py-3 text-sm text-left flex items-center gap-2"
-            >
-              <span>{s.icon}</span> <span>{s.text}</span>
-            </motion.button>
-          ))}
+      {/* INPUT */}
+      <div className="absolute bottom-[90px] left-0 right-0 px-4 bg-gradient-to-t from-[#050505] via-[#050505]/90 to-transparent pt-6 pb-2 z-30">
+        <div className="flex gap-2 items-end bg-white/5 border border-white/10 rounded-3xl p-1.5 backdrop-blur-xl focus-within:border-cyan-500/50 transition-colors shadow-2xl">
+          <textarea
+            value={msg}
+            onChange={(e) => setMsg(e.target.value)}
+            placeholder="Type your situation..."
+            rows={1}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); const t = msg; setMsg(""); sendMessage(t); }
+            }}
+            className="flex-1 bg-transparent px-4 py-3 outline-none resize-none max-h-32 text-sm placeholder:text-white/30"
+          />
+          <button
+            onClick={() => { triggerHaptic(); const t = msg; setMsg(""); sendMessage(t); }}
+            disabled={!msg.trim()}
+            className="w-10 h-10 mb-0.5 mr-0.5 shrink-0 rounded-full bg-cyan-400 text-black flex items-center justify-center disabled:opacity-30 disabled:bg-white/20 disabled:text-white transition-all active:scale-90"
+          >
+            <svg className="w-4 h-4 ml-0.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+            </svg>
+          </button>
         </div>
-      )}
-
-      <div className="fixed bottom-20 left-5 right-5 flex gap-3 z-20 bg-gradient-to-t from-black via-black/80 to-transparent pt-4">
-        <textarea
-          value={msg}
-          onChange={(e) => setMsg(e.target.value)}
-          placeholder="Type your situation…"
-          rows={1}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              const t = msg;
-              setMsg("");
-              sendMessage(t);
-            }
-          }}
-          className="flex-1 bg-white/10 border border-white/10 rounded-2xl px-4 py-3 outline-none resize-none focus:border-cyan-500/50 transition-colors placeholder:text-white/40"
-        />
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          onClick={() => {
-            triggerHaptic();
-            const t = msg;
-            setMsg("");
-            sendMessage(t);
-          }}
-          disabled={!msg.trim()}
-          className="w-12 h-12 rounded-2xl bg-cyan-500 text-black flex items-center justify-center disabled:opacity-50 disabled:bg-white/20 disabled:text-white"
-        >
-          ➤
-        </motion.button>
       </div>
     </motion.div>
   );
